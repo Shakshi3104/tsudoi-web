@@ -9,6 +9,9 @@ import {
   doc,
   updateDoc,
   getDoc,
+  getDocs,
+  deleteDoc,
+  writeBatch,
   type QuerySnapshot,
   type DocumentData,
 } from "firebase/firestore";
@@ -89,4 +92,20 @@ export async function findEventByCode(code: string): Promise<Event | null> {
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as Event;
+}
+
+async function deleteSubcollection(eventId: string, name: string): Promise<void> {
+  const snap = await getDocs(collection(db, "events", eventId, name));
+  while (snap.docs.length > 0) {
+    const chunk = snap.docs.splice(0, 400);
+    const batch = writeBatch(db);
+    chunk.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  await deleteSubcollection(eventId, "comments");
+  await deleteSubcollection(eventId, "reactions");
+  await deleteDoc(doc(db, "events", eventId));
 }

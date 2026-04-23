@@ -40,7 +40,8 @@ service cloud.firestore {
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.code == resource.data.code;
 
-      allow delete: if false;
+      allow delete: if isEventOrganizer(resource.data)
+        && resource.data.status in ['draft', 'ended'];
 
       match /comments/{commentId} {
         function parentEvent() {
@@ -62,7 +63,7 @@ service cloud.firestore {
         allow update: if isEventOrganizer(parentEvent())
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']);
 
-        allow delete: if false;
+        allow delete: if isEventOrganizer(parentEvent());
       }
 
       match /reactions/{reactionId} {
@@ -79,7 +80,8 @@ service cloud.firestore {
           && request.resource.data.type in ['heart', 'clap', 'fire']
           && request.resource.data.createdAt == request.time;
 
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isEventOrganizer(parentEvent());
       }
     }
   }

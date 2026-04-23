@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { QRCodeSVG } from "qrcode.react";
 import { signInWithGoogle, signOut, subscribeToAuth } from "../lib/auth";
-import { createEvent, subscribeToMyEvents, updateEventStatus } from "../lib/events";
+import { createEvent, deleteEvent, subscribeToMyEvents, updateEventStatus } from "../lib/events";
 import type { Event, EventStatus } from "../types/models";
 
 function joinUrl(code: string): string {
@@ -29,8 +29,33 @@ const statusBadgeClass: Record<EventStatus, string> = {
 
 function EventItem({ event }: { event: Event }) {
   const [showQR, setShowQR] = useState(false);
+  const [busy, setBusy] = useState(false);
   const next = nextStatus[event.status];
   const url = joinUrl(event.code);
+
+  const canDelete = event.status === "draft" || event.status === "ended";
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Delete "${event.title}"? This removes all comments and reactions. This cannot be undone.`
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      await deleteEvent(event.id);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    setBusy(true);
+    try {
+      await updateEventStatus(event.id, "active");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
@@ -44,12 +69,26 @@ function EventItem({ event }: { event: Event }) {
           </div>
         </div>
         <div className="row__actions">
-          <button className="btn" onClick={() => setShowQR((v) => !v)}>
+          <button className="btn" onClick={() => setShowQR((v) => !v)} disabled={busy}>
             {showQR ? "Hide QR" : "Show QR"}
           </button>
+          {event.status === "ended" && (
+            <button className="btn" onClick={handleReopen} disabled={busy}>
+              Reopen
+            </button>
+          )}
           {next && (
-            <button className="btn btn--primary" onClick={() => updateEventStatus(event.id, next)}>
+            <button
+              className="btn btn--primary"
+              onClick={() => updateEventStatus(event.id, next)}
+              disabled={busy}
+            >
               {nextLabel[event.status]}
+            </button>
+          )}
+          {canDelete && (
+            <button className="btn btn--danger" onClick={handleDelete} disabled={busy}>
+              Delete
             </button>
           )}
         </div>

@@ -50,12 +50,14 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <textarea
+      <input
+        type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         maxLength={200}
         placeholder="Write a comment…"
-        rows={3}
+        autoFocus
+        enterKeyHint="send"
         style={{
           width: "100%",
           padding: "0.75rem",
@@ -64,7 +66,6 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
           border: "1px solid #ccc",
           boxSizing: "border-box",
           fontFamily: "inherit",
-          resize: "vertical",
         }}
       />
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>

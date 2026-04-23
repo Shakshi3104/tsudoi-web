@@ -154,18 +154,67 @@ function CreateEventForm({ user }: { user: User }) {
   );
 }
 
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+const PASS_STORAGE_KEY = "tsudoi.admin-pass";
+
+function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input === ADMIN_PASSWORD) {
+      sessionStorage.setItem(PASS_STORAGE_KEY, "1");
+      onUnlock();
+    } else {
+      setError("Incorrect password");
+    }
+  };
+
+  return (
+    <main className="app-shell">
+      <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
+        <h1>Tsudoi Admin</h1>
+        <form onSubmit={submit} className="card" style={{ marginTop: "var(--space-5)" }}>
+          <div className="stack">
+            <label className="field" style={{ textAlign: "left" }}>
+              Password
+              <input
+                className="input"
+                type="password"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                autoFocus
+              />
+            </label>
+            <button type="submit" className="btn btn--primary btn--large" disabled={!input}>
+              Continue
+            </button>
+            {error && <p className="text-danger" style={{ fontSize: 13 }}>{error}</p>}
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+
 export default function Admin() {
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    if (!ADMIN_PASSWORD) return true;
+    return sessionStorage.getItem(PASS_STORAGE_KEY) === "1";
+  });
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [signInError, setSignInError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!unlocked) return;
     return subscribeToAuth((u) => {
       setUser(u);
       setLoading(false);
     });
-  }, []);
+  }, [unlocked]);
 
   useEffect(() => {
     if (!user) {
@@ -174,6 +223,10 @@ export default function Admin() {
     }
     return subscribeToMyEvents(user.uid, setEvents);
   }, [user]);
+
+  if (!unlocked) {
+    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  }
 
   const handleSignIn = async () => {
     setSignInError(null);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { User } from "firebase/auth";
 import { signInWithGoogle, subscribeToAuth } from "../lib/auth";
 import { findEventByCode } from "../lib/events";
@@ -48,11 +48,12 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
 
   if (event.status !== "active") {
     return (
-      <div className="card">
+      <div className="card stack">
         <p className="text-secondary">
           This event is <strong>{event.status}</strong>. Comments can only be
           posted while active.
         </p>
+        <Link to="/" className="btn btn--primary btn--large">Back to home</Link>
       </div>
     );
   }
@@ -215,6 +216,9 @@ export default function Join() {
           <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
             The code <code>{eventCode}</code> didn't match any event.
           </p>
+          <Link to="/" className="btn btn--primary btn--large" style={{ marginTop: "var(--space-5)" }}>
+            Back to home
+          </Link>
         </div>
       </main>
     );
@@ -228,6 +232,9 @@ export default function Join() {
           <p className="text-danger" style={{ marginTop: "var(--space-2)" }}>
             {lookupError}
           </p>
+          <Link to="/" className="btn btn--primary btn--large" style={{ marginTop: "var(--space-5)" }}>
+            Back to home
+          </Link>
         </div>
       </main>
     );

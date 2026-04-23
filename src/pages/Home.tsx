@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const CODE_LENGTH = 6;
 const CODE_CHARS = /^[A-Z0-9]$/;
@@ -143,6 +143,11 @@ export default function Home() {
           Join
         </button>
       </form>
+      <footer className="home-footer">
+        <Link to="/admin" className="home-footer__link">
+          Admin →
+        </Link>
+      </footer>
     </main>
   );
 }

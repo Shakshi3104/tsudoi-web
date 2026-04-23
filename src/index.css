@@ -459,3 +459,29 @@ label.field {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-bg);
 }
+
+.home-footer {
+  position: fixed;
+  bottom: var(--space-5);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.home-footer__link {
+  pointer-events: auto;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.home-footer__link:hover {
+  color: var(--text-secondary);
+  background: var(--control-bg);
+  text-decoration: none;
+}

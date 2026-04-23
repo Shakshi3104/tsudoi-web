@@ -19,8 +19,8 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
   const [text, setText] = useState("");
   const [color, setColor] = useState(COMMENT_COLORS[1]);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
 
   const send = async (body: string) => {
@@ -30,7 +30,7 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
       await postComment(event.id, user, body, color);
       setHistory((prev) => [body, ...prev.filter((m) => m !== body)].slice(0, 5));
       setJustSent(true);
-      setTimeout(() => setJustSent(false), 1500);
+      setTimeout(() => setJustSent(false), 1200);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -101,9 +101,8 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
           className="btn btn--primary btn--large"
           disabled={submitting || !text.trim()}
         >
-          {submitting ? "Sending…" : "Send"}
+          {submitting ? "Sending…" : justSent ? "Sent ✓" : "Send"}
         </button>
-        {justSent && <p className="text-success" style={{ fontSize: 13 }}>Sent</p>}
         {error && <p className="text-danger" style={{ fontSize: 13 }}>{error}</p>}
       </div>
 

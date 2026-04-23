@@ -16,9 +16,15 @@ const nextStatus: Record<EventStatus, EventStatus | null> = {
 };
 
 const nextLabel: Record<EventStatus, string> = {
-  draft: "Start event",
-  active: "End event",
+  draft: "Start",
+  active: "End",
   ended: "",
+};
+
+const statusBadgeClass: Record<EventStatus, string> = {
+  draft: "badge badge--draft",
+  active: "badge badge--active",
+  ended: "badge badge--ended",
 };
 
 function EventItem({ event }: { event: Event }) {
@@ -27,54 +33,62 @@ function EventItem({ event }: { event: Event }) {
   const url = joinUrl(event.code);
 
   return (
-    <li
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 6,
-        padding: "0.75rem 1rem",
-        marginBottom: "0.5rem",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
-        <div>
-          <strong>{event.title}</strong>
-          <div style={{ fontSize: "0.85rem", color: "#666" }}>
-            code: <code>{event.code}</code> · status: {event.status}
+    <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+      <div className="row-flex">
+        <div className="row__main">
+          <div className="row__title">{event.title}</div>
+          <div className="row__meta">
+            <span className={statusBadgeClass[event.status]}>{event.status}</span>
+            {" · "}
+            code <code>{event.code}</code>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button onClick={() => setShowQR((v) => !v)}>
+        <div className="row__actions">
+          <button className="btn" onClick={() => setShowQR((v) => !v)}>
             {showQR ? "Hide QR" : "Show QR"}
           </button>
           {next && (
-            <button onClick={() => updateEventStatus(event.id, next)}>
+            <button className="btn btn--primary" onClick={() => updateEventStatus(event.id, next)}>
               {nextLabel[event.status]}
             </button>
           )}
         </div>
       </div>
       {showQR && (
-        <div style={{ marginTop: "1rem", textAlign: "center" }}>
-          <QRCodeSVG value={url} size={200} level="M" />
-          <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", wordBreak: "break-all" }}>
-            <a href={url}>{url}</a>
+        <div
+          style={{
+            marginTop: "var(--space-4)",
+            padding: "var(--space-5)",
+            background: "var(--surface-muted)",
+            borderRadius: "var(--radius-lg)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "var(--space-3)",
+          }}
+        >
+          <div style={{ background: "#ffffff", padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
+            <QRCodeSVG value={url} size={200} level="M" />
           </div>
+          <a href={url} className="row__meta" style={{ wordBreak: "break-all", textAlign: "center" }}>
+            {url}
+          </a>
         </div>
       )}
-    </li>
+    </div>
   );
 }
 
 function EventList({ events }: { events: Event[] }) {
   if (events.length === 0) {
-    return <p style={{ color: "#666" }}>No events yet.</p>;
+    return <p className="text-secondary">No events yet. Create one above.</p>;
   }
   return (
-    <ul style={{ listStyle: "none", padding: 0 }}>
+    <div className="row-list">
       {events.map((ev) => (
         <EventItem key={ev.id} event={ev} />
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -105,37 +119,38 @@ function CreateEventForm({ user }: { user: User }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ marginBottom: "1.5rem" }}>
-      <div style={{ marginBottom: "0.5rem" }}>
-        <label>
-          Title:
+    <div className="card">
+      <form onSubmit={handleSubmit} className="stack">
+        <label className="field">
+          Title
           <input
+            className="input"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={100}
-            style={{ marginLeft: "0.5rem", width: "20rem" }}
+            placeholder="April 2026 all-hands"
           />
         </label>
-      </div>
-      <div style={{ marginBottom: "0.5rem" }}>
-        <label>
-          Allowed domains (comma-separated, blank = any):
+        <label className="field">
+          Allowed domains <span className="text-tertiary">(comma separated, blank = any)</span>
           <input
+            className="input"
             type="text"
             value={domains}
             onChange={(e) => setDomains(e.target.value)}
             placeholder="youtrust.jp"
-            style={{ marginLeft: "0.5rem", width: "20rem" }}
           />
         </label>
-      </div>
-      <button type="submit" disabled={submitting}>
-        {submitting ? "Creating…" : "Create event"}
-      </button>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-    </form>
+        <div className="row-flex">
+          <button type="submit" className="btn btn--primary" disabled={submitting || !title.trim()}>
+            {submitting ? "Creating…" : "Create event"}
+          </button>
+          {error && <span className="text-danger" style={{ fontSize: 13 }}>{error}</span>}
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -169,28 +184,61 @@ export default function Admin() {
     }
   };
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) {
+    return (
+      <main className="app-shell">
+        <div className="app-container">
+          <p className="text-secondary">Loading…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="app-shell">
+        <div className="app-container app-container--narrow">
+          <h1>Tsudoi Admin</h1>
+          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
+            Create and manage events.
+          </p>
+          <div className="card" style={{ marginTop: "var(--space-5)", textAlign: "center" }}>
+            <button className="btn btn--primary btn--large" onClick={handleSignIn}>
+              Sign in with Google
+            </button>
+            {signInError && (
+              <p className="text-danger" style={{ marginTop: "var(--space-3)", fontSize: 13 }}>
+                {signInError}
+              </p>
+            )}
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif", maxWidth: 720 }}>
-      <h1>Tsudoi Admin</h1>
-      {user ? (
-        <>
-          <p>
-            Signed in as {user.displayName} ({user.email}){" "}
-            <button onClick={() => signOut()}>Sign out</button>
-          </p>
-          <h2>Create event</h2>
-          <CreateEventForm user={user} />
-          <h2>Your events</h2>
-          <EventList events={events} />
-        </>
-      ) : (
-        <>
-          <button onClick={handleSignIn}>Sign in with Google</button>
-          {signInError && <p style={{ color: "crimson" }}>{signInError}</p>}
-        </>
-      )}
+    <main className="app-shell">
+      <div className="app-container">
+        <header className="row-flex" style={{ marginBottom: "var(--space-5)" }}>
+          <h1>Tsudoi Admin</h1>
+          <div className="spacer" />
+          <div className="row-flex">
+            <span className="text-secondary" style={{ fontSize: 13 }}>
+              {user.displayName ?? user.email}
+            </span>
+            <button className="btn" onClick={() => signOut()}>
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <h2 className="section-title">Create event</h2>
+        <CreateEventForm user={user} />
+
+        <h2 className="section-title">Your events</h2>
+        <EventList events={events} />
+      </div>
     </main>
   );
 }

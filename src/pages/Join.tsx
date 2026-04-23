@@ -48,102 +48,93 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
 
   if (event.status !== "active") {
     return (
-      <p style={{ color: "#666" }}>
-        This event is {event.status}. Comments can only be posted while active.
-      </p>
+      <div className="card">
+        <p className="text-secondary">
+          This event is <strong>{event.status}</strong>. Comments can only be
+          posted while active.
+        </p>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        maxLength={200}
-        placeholder="Write a comment…"
-        autoFocus
-        enterKeyHint="send"
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          fontSize: "1rem",
-          borderRadius: 8,
-          border: "1px solid #ccc",
-          boxSizing: "border-box",
-          fontFamily: "inherit",
-        }}
-      />
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        {COMMENT_COLORS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setColor(c)}
-            aria-label={`Color ${c}`}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: c,
-              border: color === c ? "3px solid #1d1d1f" : "1px solid #ccc",
-              cursor: "pointer",
-            }}
-          />
-        ))}
-      </div>
-      <button
-        type="submit"
-        disabled={submitting || !text.trim()}
-        style={{
-          padding: "0.75rem",
-          fontSize: "1rem",
-          fontWeight: 500,
-          background: "#0071e3",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          cursor: submitting || !text.trim() ? "not-allowed" : "pointer",
-          opacity: submitting || !text.trim() ? 0.6 : 1,
-        }}
-      >
-        {submitting ? "Sending…" : "Send"}
-      </button>
-      <div style={{ fontSize: "0.85rem", color: "#666", textAlign: "right" }}>
-        {text.length}/200
-      </div>
-      {justSent && <p style={{ color: "#34c759", margin: 0 }}>Sent!</p>}
-      {error && <p style={{ color: "crimson", margin: 0 }}>{error}</p>}
-      {history.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
-          <div style={{ fontSize: "0.8rem", color: "#666" }}>Recent — tap to resend</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            {history.map((msg) => (
+    <form onSubmit={handleSubmit} className="card">
+      <div className="stack">
+        <input
+          className="input"
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={200}
+          placeholder="Write a comment…"
+          autoFocus
+          enterKeyHint="send"
+          style={{ fontSize: 16 }}
+        />
+        <div className="row-flex" style={{ justifyContent: "space-between" }}>
+          <div className="row-flex" style={{ gap: "var(--space-2)" }}>
+            {COMMENT_COLORS.map((c) => (
               <button
-                key={msg}
+                key={c}
                 type="button"
-                onClick={() => send(msg)}
-                disabled={submitting}
+                onClick={() => setColor(c)}
+                aria-label={`Color ${c}`}
                 style={{
-                  padding: "0.5rem 0.75rem",
-                  fontSize: "0.95rem",
-                  background: "#f5f5f7",
-                  color: "#1d1d1f",
-                  border: "1px solid #d2d2d7",
-                  borderRadius: 980,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                  maxWidth: "100%",
-                  textAlign: "left",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: c,
+                  border: color === c ? "3px solid var(--text)" : "1px solid var(--border-strong)",
+                  cursor: "pointer",
+                  padding: 0,
                 }}
-              >
-                {msg}
-              </button>
+              />
             ))}
           </div>
+          <div className="text-tertiary" style={{ fontSize: 12 }}>
+            {text.length}/200
+          </div>
         </div>
+        <button
+          type="submit"
+          className="btn btn--primary btn--large"
+          disabled={submitting || !text.trim()}
+        >
+          {submitting ? "Sending…" : "Send"}
+        </button>
+        {justSent && <p className="text-success" style={{ fontSize: 13 }}>Sent</p>}
+        {error && <p className="text-danger" style={{ fontSize: 13 }}>{error}</p>}
+      </div>
+
+      {history.length > 0 && (
+        <>
+          <hr className="divider" />
+          <div className="stack stack--tight">
+            <div className="text-secondary" style={{ fontSize: 12 }}>
+              Recent — tap to resend
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+              {history.map((msg) => (
+                <button
+                  key={msg}
+                  type="button"
+                  onClick={() => send(msg)}
+                  disabled={submitting}
+                  className="btn"
+                  style={{
+                    borderRadius: "var(--radius-pill)",
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {msg}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </form>
   );
@@ -175,54 +166,69 @@ export default function Join() {
       .finally(() => setEventLoading(false));
   }, [user, eventCode]);
 
-  const pageStyle: React.CSSProperties = {
-    padding: "1.5rem",
-    maxWidth: 480,
-    margin: "0 auto",
-    fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-  };
-
-  if (authLoading) return <main style={pageStyle}><p>Loading…</p></main>;
-
-  if (!user) {
+  if (authLoading) {
     return (
-      <main style={pageStyle}>
-        <h1>Join event</h1>
-        <p>Code: <code>{eventCode}</code></p>
-        <button
-          onClick={() => signInWithGoogle().catch(() => {})}
-          style={{
-            padding: "0.75rem 1.5rem",
-            fontSize: "1rem",
-            background: "#0071e3",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-          }}
-        >
-          Sign in with Google
-        </button>
+      <main className="app-shell">
+        <div className="app-container app-container--narrow">
+          <p className="text-secondary">Loading…</p>
+        </div>
       </main>
     );
   }
 
-  if (eventLoading) return <main style={pageStyle}><p>Looking up event…</p></main>;
+  if (!user) {
+    return (
+      <main className="app-shell">
+        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
+          <h1>Join event</h1>
+          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
+            Code <code>{eventCode}</code>
+          </p>
+          <div className="card" style={{ marginTop: "var(--space-5)" }}>
+            <button
+              className="btn btn--primary btn--large"
+              onClick={() => signInWithGoogle().catch(() => {})}
+            >
+              Sign in with Google
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (eventLoading) {
+    return (
+      <main className="app-shell">
+        <div className="app-container app-container--narrow">
+          <p className="text-secondary">Looking up event…</p>
+        </div>
+      </main>
+    );
+  }
 
   if (notFound) {
     return (
-      <main style={pageStyle}>
-        <h1>Event not found</h1>
-        <p>The code <code>{eventCode}</code> didn't match any event.</p>
+      <main className="app-shell">
+        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
+          <h1>Event not found</h1>
+          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
+            The code <code>{eventCode}</code> didn't match any event.
+          </p>
+        </div>
       </main>
     );
   }
 
   if (lookupError) {
     return (
-      <main style={pageStyle}>
-        <h1>Error</h1>
-        <p style={{ color: "crimson" }}>{lookupError}</p>
+      <main className="app-shell">
+        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
+          <h1>Error</h1>
+          <p className="text-danger" style={{ marginTop: "var(--space-2)" }}>
+            {lookupError}
+          </p>
+        </div>
       </main>
     );
   }
@@ -230,10 +236,16 @@ export default function Join() {
   if (!event) return null;
 
   return (
-    <main style={pageStyle}>
-      <h1 style={{ marginBottom: "0.25rem" }}>{event.title}</h1>
-      <p style={{ color: "#666", marginTop: 0 }}>Signed in as {user.displayName}</p>
-      <CommentForm event={event} user={user} />
+    <main className="app-shell">
+      <div className="app-container app-container--narrow">
+        <header style={{ marginBottom: "var(--space-5)" }}>
+          <h1>{event.title}</h1>
+          <p className="text-secondary" style={{ marginTop: "var(--space-1)" }}>
+            Signed in as {user.displayName ?? user.email}
+          </p>
+        </header>
+        <CommentForm event={event} user={user} />
+      </div>
     </main>
   );
 }

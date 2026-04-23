@@ -21,16 +21,14 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = text.trim();
-    if (!trimmed) return;
+  const send = async (body: string) => {
     setSubmitting(true);
     setError(null);
     try {
-      await postComment(event.id, user, trimmed, color);
-      setText("");
+      await postComment(event.id, user, body, color);
+      setHistory((prev) => [body, ...prev.filter((m) => m !== body)].slice(0, 5));
       setJustSent(true);
       setTimeout(() => setJustSent(false), 1500);
     } catch (e) {
@@ -38,6 +36,14 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    await send(trimmed);
+    setText("");
   };
 
   if (event.status !== "active") {
@@ -106,8 +112,39 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
       <div style={{ fontSize: "0.85rem", color: "#666", textAlign: "right" }}>
         {text.length}/200
       </div>
-      {justSent && <p style={{ color: "#34c759" }}>Sent!</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {justSent && <p style={{ color: "#34c759", margin: 0 }}>Sent!</p>}
+      {error && <p style={{ color: "crimson", margin: 0 }}>{error}</p>}
+      {history.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+          <div style={{ fontSize: "0.8rem", color: "#666" }}>Recent — tap to resend</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {history.map((msg) => (
+              <button
+                key={msg}
+                type="button"
+                onClick={() => send(msg)}
+                disabled={submitting}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  fontSize: "0.95rem",
+                  background: "#f5f5f7",
+                  color: "#1d1d1f",
+                  border: "1px solid #d2d2d7",
+                  borderRadius: 980,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  maxWidth: "100%",
+                  textAlign: "left",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {msg}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </form>
   );
 }

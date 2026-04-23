@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function domainOf(email) {
+      return email.split('@')[1];
+    }
+
+    function domainAllowed(event) {
+      return event.settings.allowedDomains.size() == 0
+        || domainOf(request.auth.token.email) in event.settings.allowedDomains;
+    }
+
+    function isEventOrganizer(event) {
+      return isSignedIn() && request.auth.uid == event.createdBy;
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn() && (
+        resource == null
+        || domainAllowed(resource.data)
+        || request.auth.uid == resource.data.createdBy
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'draft'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 1
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.code is string
+        && request.resource.data.code.size() >= 4;
+
+      allow update: if isEventOrganizer(resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.code == resource.data.code;
+
+      allow delete: if false;
+
+      match /comments/{commentId} {
+        function parentEvent() {
+          return get(/databases/$(database)/documents/events/$(eventId)).data;
+        }
+
+        allow read: if isSignedIn() && domainAllowed(parentEvent());
+
+        allow create: if isSignedIn()
+          && domainAllowed(parentEvent())
+          && parentEvent().status == 'active'
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorEmail == request.auth.token.email
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 200
+          && request.resource.data.createdAt == request.time;
+
+        allow update: if isEventOrganizer(parentEvent())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden']);
+
+        allow delete: if false;
+      }
+
+      match /reactions/{reactionId} {
+        function parentEvent() {
+          return get(/databases/$(database)/documents/events/$(eventId)).data;
+        }
+
+        allow read: if isSignedIn() && domainAllowed(parentEvent());
+
+        allow create: if isSignedIn()
+          && domainAllowed(parentEvent())
+          && parentEvent().status == 'active'
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.type in ['heart', 'clap', 'fire']
+          && request.resource.data.createdAt == request.time;
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

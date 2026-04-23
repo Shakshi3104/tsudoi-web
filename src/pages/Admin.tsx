@@ -179,7 +179,7 @@ function CreateEventForm({ user }: { user: User }) {
             type="text"
             value={domains}
             onChange={(e) => setDomains(e.target.value)}
-            placeholder="youtrust.jp"
+            placeholder={import.meta.env.VITE_ALLOWED_DOMAIN || "example.com"}
           />
         </label>
         <div className="row-flex">

@@ -251,6 +251,11 @@ export default function Join() {
           </p>
         </header>
         <CommentForm event={event} user={user} />
+        <div style={{ marginTop: "var(--space-5)", textAlign: "center" }}>
+          <Link to="/" className="text-tertiary" style={{ fontSize: 13 }}>
+            ← Back to home
+          </Link>
+        </div>
       </div>
     </main>
   );

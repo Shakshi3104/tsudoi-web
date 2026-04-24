@@ -27,6 +27,43 @@ const statusBadgeClass: Record<EventStatus, string> = {
   ended: "badge badge--ended",
 };
 
+function CopyableCode({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can fail on insecure contexts; silently ignore.
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Copy code"
+      style={{
+        padding: "2px 6px",
+        font: "inherit",
+        fontFamily: "var(--font-mono)",
+        fontSize: "0.9em",
+        background: copied ? "rgba(52, 199, 89, 0.15)" : "var(--control-bg)",
+        color: copied ? "var(--success)" : "var(--text)",
+        border: "none",
+        borderRadius: "var(--radius-sm)",
+        cursor: "pointer",
+        transition: "background 120ms ease",
+      }}
+    >
+      {copied ? `${value} ✓` : value}
+    </button>
+  );
+}
+
 function EventItem({ event }: { event: Event }) {
   const [showQR, setShowQR] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -62,10 +99,11 @@ function EventItem({ event }: { event: Event }) {
       <div className="row-flex">
         <div className="row__main">
           <div className="row__title">{event.title}</div>
-          <div className="row__meta">
+          <div className="row__meta" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
             <span className={statusBadgeClass[event.status]}>{event.status}</span>
-            {" · "}
-            code <code>{event.code}</code>
+            <span>·</span>
+            <span>code</span>
+            <CopyableCode value={event.code} />
           </div>
         </div>
         <div className="row__actions">

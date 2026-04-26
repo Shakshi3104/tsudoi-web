@@ -408,32 +408,29 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
   };
 
   return (
-    <main className="app-shell">
-      <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
-        <h1>Tsudoi Admin</h1>
-        <form onSubmit={submit} className="card" style={{ marginTop: "var(--space-5)" }}>
-          <div className="stack">
-            <label className="field" style={{ textAlign: "left" }}>
-              Password
-              <input
-                className="input"
-                type="password"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                autoFocus
-              />
-            </label>
-            <button type="submit" className="btn btn--primary btn--large" disabled={!input}>
-              Continue
-            </button>
-            {error && (
-              <p className="text-danger" style={{ fontSize: 13 }}>
-                {error}
-              </p>
-            )}
-          </div>
-        </form>
-      </div>
+    <main className="gate">
+      <form onSubmit={submit} className="gate__inner">
+        <h1 className="gate__title">Tsudoi Admin</h1>
+        <p className="text-secondary gate__sub">Enter the admin password to continue.</p>
+        <label className="gate__field">
+          <span className="gate__field-label">Password</span>
+          <input
+            className="input"
+            type="password"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            autoFocus
+          />
+        </label>
+        <button
+          type="submit"
+          className="btn btn--primary btn--large gate__cta"
+          disabled={!input}
+        >
+          Continue
+        </button>
+        {error && <p className="gate__error">{error}</p>}
+      </form>
     </main>
   );
 }
@@ -494,8 +491,8 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <main className="app-shell">
-        <div className="app-container">
+      <main className="gate">
+        <div className="gate__inner">
           <p className="text-secondary">Loading…</p>
         </div>
       </main>
@@ -504,22 +501,19 @@ export default function Admin() {
 
   if (!user) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow">
-          <h1>Tsudoi Admin</h1>
-          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
-            Create and manage events.
+      <main className="gate">
+        <div className="gate__inner">
+          <h1 className="gate__title">Tsudoi Admin</h1>
+          <p className="text-secondary gate__sub">
+            Sign in with Google to create and manage events.
           </p>
-          <div className="card" style={{ marginTop: "var(--space-5)", textAlign: "center" }}>
-            <button className="btn btn--primary btn--large" onClick={handleSignIn}>
-              Sign in with Google
-            </button>
-            {signInError && (
-              <p className="text-danger" style={{ marginTop: "var(--space-3)", fontSize: 13 }}>
-                {signInError}
-              </p>
-            )}
-          </div>
+          <button
+            className="btn btn--primary btn--large gate__cta"
+            onClick={handleSignIn}
+          >
+            Sign in with Google
+          </button>
+          {signInError && <p className="gate__error">{signInError}</p>}
         </div>
       </main>
     );

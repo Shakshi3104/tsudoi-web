@@ -179,8 +179,8 @@ function CommentScreen({ event, user }: { event: Event; user: User }) {
 
 function CenteredCard({ children }: { children: React.ReactNode }) {
   return (
-    <main className="join-gate">
-      <div className="join-gate__inner">{children}</div>
+    <main className="gate">
+      <div className="gate__inner">{children}</div>
     </main>
   );
 }
@@ -226,12 +226,12 @@ export default function Join() {
   if (!user) {
     return (
       <CenteredCard>
-        <h1 className="join-gate__title">Join event</h1>
-        <p className="text-secondary join-gate__sub">
+        <h1 className="gate__title">Join event</h1>
+        <p className="text-secondary gate__sub">
           Code <code>{eventCode}</code>
         </p>
         <button
-          className="btn btn--primary btn--large join-gate__cta"
+          className="btn btn--primary btn--large gate__cta"
           onClick={() => signInWithGoogle().catch(() => {})}
         >
           Sign in with Google
@@ -251,11 +251,11 @@ export default function Join() {
   if (notFound) {
     return (
       <CenteredCard>
-        <h1 className="join-gate__title">Event not found</h1>
-        <p className="text-secondary join-gate__sub">
+        <h1 className="gate__title">Event not found</h1>
+        <p className="text-secondary gate__sub">
           The code <code>{eventCode}</code> didn't match any event.
         </p>
-        <Link to="/" className="btn btn--primary btn--large join-gate__cta">
+        <Link to="/" className="btn btn--primary btn--large gate__cta">
           Back to home
         </Link>
       </CenteredCard>
@@ -265,9 +265,9 @@ export default function Join() {
   if (lookupError) {
     return (
       <CenteredCard>
-        <h1 className="join-gate__title">Error</h1>
-        <p className="text-danger join-gate__sub">{lookupError}</p>
-        <Link to="/" className="btn btn--primary btn--large join-gate__cta">
+        <h1 className="gate__title">Error</h1>
+        <p className="text-danger gate__sub">{lookupError}</p>
+        <Link to="/" className="btn btn--primary btn--large gate__cta">
           Back to home
         </Link>
       </CenteredCard>

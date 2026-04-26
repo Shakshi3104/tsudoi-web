@@ -144,59 +144,6 @@ code {
 }
 
 /* ==========================================================================
-   Layout
-   ========================================================================== */
-
-.app-shell {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-container {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-5);
-}
-
-.app-container--narrow {
-  max-width: 480px;
-}
-
-/* ==========================================================================
-   Surfaces
-   ========================================================================== */
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-5);
-}
-
-.card + .card,
-.card + * {
-  margin-top: var(--space-4);
-}
-
-.section-title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  margin: var(--space-6) var(--space-2) var(--space-2);
-}
-
-.divider {
-  height: 1px;
-  background: var(--divider);
-  border: 0;
-  margin: var(--space-4) 0;
-}
-
-/* ==========================================================================
    Controls
    ========================================================================== */
 
@@ -378,15 +325,6 @@ label.field {
 .text-tertiary { color: var(--text-tertiary); }
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.stack--tight { gap: var(--space-2); }
-.stack--loose { gap: var(--space-5); }
 
 .row-flex {
   display: flex;
@@ -1400,17 +1338,18 @@ label.field {
   color: var(--text-secondary);
 }
 
-/* Auth / loading / error gate (centered card for these short states) */
+/* Auth / loading / error gate (centered short-state screens) */
 
-.join-gate {
+.gate {
   min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  background: var(--bg);
 }
 
-.join-gate__inner {
+.gate__inner {
   width: 100%;
   max-width: 360px;
   text-align: center;
@@ -1420,18 +1359,40 @@ label.field {
   gap: var(--space-3);
 }
 
-.join-gate__title {
+.gate__title {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0;
 }
 
-.join-gate__sub {
+.gate__sub {
   margin: 0;
   font-size: 14px;
 }
 
-.join-gate__cta {
+.gate__cta {
   margin-top: var(--space-3);
+  width: 100%;
+}
+
+.gate__field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  margin-top: var(--space-3);
+}
+
+.gate__field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.gate__error {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--danger);
 }

@@ -5,6 +5,7 @@ import { signInWithGoogle, subscribeToAuth } from "../lib/auth";
 import { findEventByCode } from "../lib/events";
 import { postComment } from "../lib/comments";
 import type { Event } from "../types/models";
+import UserMenu from "../components/UserMenu";
 
 const COMMENT_COLORS = [
   "#1d1d1f",
@@ -88,12 +89,9 @@ function CommentScreen({ event, user }: { event: Event; user: User }) {
           <div className="join-header__meta">
             <span className="status-dot status-dot--active" aria-hidden />
             <span>Live</span>
-            <span className="text-tertiary">·</span>
-            <span className="join-header__user">
-              {user.displayName ?? user.email}
-            </span>
           </div>
         </div>
+        <UserMenu user={user} />
       </header>
 
       <div className="join-feed" ref={feedRef}>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { QRCodeSVG } from "qrcode.react";
-import { signInWithGoogle, signOut, subscribeToAuth } from "../lib/auth";
+import { signInWithGoogle, subscribeToAuth } from "../lib/auth";
+import UserMenu from "../components/UserMenu";
 import {
   createEvent,
   deleteEvent,
@@ -541,16 +542,7 @@ export default function Admin() {
         </div>
         <div className="titlebar__spacer" />
         <div className="titlebar__group titlebar__group--right">
-          <span className="titlebar__user" title={user.email ?? undefined}>
-            {user.displayName ?? user.email}
-          </span>
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--text"
-            onClick={() => signOut()}
-          >
-            Sign out
-          </button>
+          <UserMenu user={user} />
         </div>
       </div>
       <div className="window__body">

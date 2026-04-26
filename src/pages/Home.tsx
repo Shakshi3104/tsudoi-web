@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import type { User } from "firebase/auth";
+import { subscribeToAuth } from "../lib/auth";
+import UserMenu, { GearIcon } from "../components/UserMenu";
 
 const CODE_LENGTH = 6;
 const CODE_CHARS = /^[A-Z0-9]$/;
@@ -107,7 +110,10 @@ function CodeInput({
 
 export default function Home() {
   const [code, setCode] = useState("");
+  const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => subscribeToAuth(setUser), []);
 
   const submit = (value: string) => {
     const trimmed = value.trim().toUpperCase();
@@ -131,9 +137,16 @@ export default function Home() {
   return (
     <main className="home-screen">
       <div className="home-toolbar">
-        <Link to="/admin" className="home-toolbar__link">
-          Admin
-        </Link>
+        <UserMenu
+          user={user}
+          items={[
+            {
+              label: "Admin login",
+              icon: <GearIcon />,
+              onSelect: () => navigate("/admin"),
+            },
+          ]}
+        />
       </div>
       <form onSubmit={handleFormSubmit} className="home-panel">
         <div className="home-panel__brand">Tsudoi</div>

@@ -10,6 +10,7 @@ import UserMenu from "../components/UserMenu";
 const COMMENT_COLORS = [
   "#1d1d1f",
   "#0071e3",
+  "#00a5b5",
   "#34c759",
   "#ff3b30",
   "#ff9500",

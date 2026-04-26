@@ -129,25 +129,27 @@ export default function Home() {
   const ready = code.length === CODE_LENGTH;
 
   return (
-    <main className="app-shell home-screen">
-      <form onSubmit={handleFormSubmit} className="home-hero">
-        <h1 className="home-hero__title">Tsudoi</h1>
-        <p className="home-hero__subtitle">Enter the event code to join.</p>
+    <main className="home-screen">
+      <div className="home-toolbar">
+        <Link to="/admin" className="home-toolbar__link">
+          Admin
+        </Link>
+      </div>
+      <form onSubmit={handleFormSubmit} className="home-panel">
+        <div className="home-panel__brand">Tsudoi</div>
+        <h1 className="home-panel__title">Join an event</h1>
+        <p className="home-panel__subtitle">
+          Enter the 6-character code you were given.
+        </p>
         <CodeInput value={code} onChange={setCode} onComplete={submit} />
         <button
           type="submit"
-          className="btn btn--primary btn--large"
+          className="btn btn--primary btn--large home-panel__action"
           disabled={!ready}
-          style={{ marginTop: "var(--space-6)", minWidth: 160 }}
         >
           Join
         </button>
       </form>
-      <footer className="home-footer">
-        <Link to="/admin" className="home-footer__link">
-          Admin →
-        </Link>
-      </footer>
     </main>
   );
 }

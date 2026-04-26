@@ -1203,6 +1203,12 @@ label.field {
   transform: scale(0.97);
 }
 
+@media (prefers-color-scheme: dark) {
+  .join-bubble {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+}
+
 .join-bubble:disabled {
   opacity: 0.55;
   cursor: not-allowed;

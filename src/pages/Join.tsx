@@ -45,7 +45,7 @@ function CommentScreen({ event, user }: { event: Event; user: User }) {
       await postComment(event.id, user, body, sendColor);
       counterRef.current += 1;
       setHistory((prev) => [
-        ...prev.filter((m) => m.text !== body),
+        ...prev,
         { id: counterRef.current, text: body, color: sendColor },
       ]);
     } catch (e) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { User } from "firebase/auth";
 import { signInWithGoogle, subscribeToAuth } from "../lib/auth";
@@ -15,22 +15,38 @@ const COMMENT_COLORS = [
   "#af52de",
 ];
 
-function CommentForm({ event, user }: { event: Event; user: User }) {
+interface SentMessage {
+  id: number;
+  text: string;
+  color: string;
+}
+
+function CommentScreen({ event, user }: { event: Event; user: User }) {
   const [text, setText] = useState("");
   const [color, setColor] = useState(COMMENT_COLORS[1]);
   const [submitting, setSubmitting] = useState(false);
-  const [justSent, setJustSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<SentMessage[]>([]);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const counterRef = useRef(0);
 
-  const send = async (body: string) => {
+  useEffect(() => {
+    feedRef.current?.scrollTo({
+      top: feedRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [history.length]);
+
+  const send = async (body: string, sendColor: string) => {
     setSubmitting(true);
     setError(null);
     try {
-      await postComment(event.id, user, body, color);
-      setHistory((prev) => [body, ...prev.filter((m) => m !== body)].slice(0, 5));
-      setJustSent(true);
-      setTimeout(() => setJustSent(false), 1200);
+      await postComment(event.id, user, body, sendColor);
+      counterRef.current += 1;
+      setHistory((prev) => [
+        ...prev.filter((m) => m.text !== body),
+        { id: counterRef.current, text: body, color: sendColor },
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -42,101 +58,132 @@ function CommentForm({ event, user }: { event: Event; user: User }) {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
-    await send(trimmed);
+    await send(trimmed, color);
     setText("");
   };
 
   if (event.status !== "active") {
+    const message =
+      event.status === "draft"
+        ? "This event hasn't started yet."
+        : "This event has ended.";
     return (
-      <div className="card stack">
-        <p className="text-secondary">
-          This event is <strong>{event.status}</strong>. Comments can only be
-          posted while active.
-        </p>
-        <Link to="/" className="btn btn--primary btn--large">Back to home</Link>
+      <div className="join-screen join-screen--empty">
+        <div className="join-empty__title">{event.title}</div>
+        <div className="join-empty__message">{message}</div>
+        <Link to="/" className="btn btn--primary btn--large">
+          Back to home
+        </Link>
       </div>
     );
   }
 
+  const canSend = !submitting && text.trim().length > 0;
+
   return (
-    <form onSubmit={handleSubmit} className="card">
-      <div className="stack">
-        <input
-          className="input"
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          maxLength={200}
-          placeholder="Write a comment…"
-          autoFocus
-          enterKeyHint="send"
-          style={{ fontSize: 16 }}
-        />
-        <div className="row-flex" style={{ justifyContent: "space-between" }}>
-          <div className="row-flex" style={{ gap: "var(--space-2)" }}>
-            {COMMENT_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                aria-label={`Color ${c}`}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: c,
-                  border: color === c ? "3px solid var(--text)" : "1px solid var(--border-strong)",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <div className="text-tertiary" style={{ fontSize: 12 }}>
-            {text.length}/200
+    <div className="join-screen">
+      <header className="join-header">
+        <div className="join-header__main">
+          <h1 className="join-header__title">{event.title}</h1>
+          <div className="join-header__meta">
+            <span className="status-dot status-dot--active" aria-hidden />
+            <span>Live</span>
+            <span className="text-tertiary">·</span>
+            <span className="join-header__user">
+              {user.displayName ?? user.email}
+            </span>
           </div>
         </div>
-        <button
-          type="submit"
-          className="btn btn--primary btn--large"
-          disabled={submitting || !text.trim()}
-        >
-          {submitting ? "Sending…" : justSent ? "Sent ✓" : "Send"}
-        </button>
-        {error && <p className="text-danger" style={{ fontSize: 13 }}>{error}</p>}
-      </div>
+      </header>
 
-      {history.length > 0 && (
-        <>
-          <hr className="divider" />
-          <div className="stack stack--tight">
-            <div className="text-secondary" style={{ fontSize: 12 }}>
-              Recent — tap to resend
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
-              {history.map((msg) => (
-                <button
-                  key={msg}
-                  type="button"
-                  onClick={() => send(msg)}
-                  disabled={submitting}
-                  className="btn"
-                  style={{
-                    borderRadius: "var(--radius-pill)",
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {msg}
-                </button>
-              ))}
+      <div className="join-feed" ref={feedRef}>
+        {history.length === 0 ? (
+          <div className="join-feed__empty">
+            <div className="join-feed__empty-title">Send your first comment</div>
+            <div className="join-feed__empty-sub">
+              It will appear on the projector screen.
             </div>
           </div>
-        </>
-      )}
-    </form>
+        ) : (
+          <ul className="join-bubbles">
+            {history.map((msg) => (
+              <li key={msg.id} className="join-bubble-row">
+                <button
+                  type="button"
+                  className="join-bubble"
+                  style={{ background: msg.color }}
+                  onClick={() => send(msg.text, msg.color)}
+                  disabled={submitting}
+                  title="Send again"
+                >
+                  {msg.text}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <form className="composer" onSubmit={handleSubmit}>
+        {error && <div className="composer__error">{error}</div>}
+        <div className="composer__colors" role="radiogroup" aria-label="Comment color">
+          {COMMENT_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={color === c}
+              aria-label={`Color ${c}`}
+              className={`composer__color${color === c ? " composer__color--selected" : ""}`}
+              onClick={() => setColor(c)}
+              style={{ background: c }}
+            />
+          ))}
+          <span className="composer__counter" aria-live="polite">
+            {text.length}/200
+          </span>
+        </div>
+        <div className="composer__row">
+          <input
+            className="composer__input"
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={200}
+            placeholder="Message"
+            autoFocus
+            enterKeyHint="send"
+            inputMode="text"
+          />
+          <button
+            type="submit"
+            className="composer__send"
+            disabled={!canSend}
+            style={{ background: canSend ? color : undefined }}
+            aria-label="Send comment"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+              <path
+                d="M5 12 L19 12 M13 6 L19 12 L13 18"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function CenteredCard({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="join-gate">
+      <div className="join-gate__inner">{children}</div>
+    </main>
   );
 }
 
@@ -149,10 +196,14 @@ export default function Join() {
   const [notFound, setNotFound] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  useEffect(() => subscribeToAuth((u) => {
-    setUser(u);
-    setAuthLoading(false);
-  }), []);
+  useEffect(
+    () =>
+      subscribeToAuth((u) => {
+        setUser(u);
+        setAuthLoading(false);
+      }),
+    []
+  );
 
   useEffect(() => {
     if (!user || !eventCode) return;
@@ -168,95 +219,64 @@ export default function Join() {
 
   if (authLoading) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow">
-          <p className="text-secondary">Loading…</p>
-        </div>
-      </main>
+      <CenteredCard>
+        <p className="text-secondary">Loading…</p>
+      </CenteredCard>
     );
   }
 
   if (!user) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
-          <h1>Join event</h1>
-          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
-            Code <code>{eventCode}</code>
-          </p>
-          <div className="card" style={{ marginTop: "var(--space-5)" }}>
-            <button
-              className="btn btn--primary btn--large"
-              onClick={() => signInWithGoogle().catch(() => {})}
-            >
-              Sign in with Google
-            </button>
-          </div>
-        </div>
-      </main>
+      <CenteredCard>
+        <h1 className="join-gate__title">Join event</h1>
+        <p className="text-secondary join-gate__sub">
+          Code <code>{eventCode}</code>
+        </p>
+        <button
+          className="btn btn--primary btn--large join-gate__cta"
+          onClick={() => signInWithGoogle().catch(() => {})}
+        >
+          Sign in with Google
+        </button>
+      </CenteredCard>
     );
   }
 
   if (eventLoading) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow">
-          <p className="text-secondary">Looking up event…</p>
-        </div>
-      </main>
+      <CenteredCard>
+        <p className="text-secondary">Looking up event…</p>
+      </CenteredCard>
     );
   }
 
   if (notFound) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
-          <h1>Event not found</h1>
-          <p className="text-secondary" style={{ marginTop: "var(--space-2)" }}>
-            The code <code>{eventCode}</code> didn't match any event.
-          </p>
-          <Link to="/" className="btn btn--primary btn--large" style={{ marginTop: "var(--space-5)" }}>
-            Back to home
-          </Link>
-        </div>
-      </main>
+      <CenteredCard>
+        <h1 className="join-gate__title">Event not found</h1>
+        <p className="text-secondary join-gate__sub">
+          The code <code>{eventCode}</code> didn't match any event.
+        </p>
+        <Link to="/" className="btn btn--primary btn--large join-gate__cta">
+          Back to home
+        </Link>
+      </CenteredCard>
     );
   }
 
   if (lookupError) {
     return (
-      <main className="app-shell">
-        <div className="app-container app-container--narrow" style={{ textAlign: "center" }}>
-          <h1>Error</h1>
-          <p className="text-danger" style={{ marginTop: "var(--space-2)" }}>
-            {lookupError}
-          </p>
-          <Link to="/" className="btn btn--primary btn--large" style={{ marginTop: "var(--space-5)" }}>
-            Back to home
-          </Link>
-        </div>
-      </main>
+      <CenteredCard>
+        <h1 className="join-gate__title">Error</h1>
+        <p className="text-danger join-gate__sub">{lookupError}</p>
+        <Link to="/" className="btn btn--primary btn--large join-gate__cta">
+          Back to home
+        </Link>
+      </CenteredCard>
     );
   }
 
   if (!event) return null;
 
-  return (
-    <main className="app-shell">
-      <div className="app-container app-container--narrow">
-        <header style={{ marginBottom: "var(--space-5)" }}>
-          <h1>{event.title}</h1>
-          <p className="text-secondary" style={{ marginTop: "var(--space-1)" }}>
-            Signed in as {user.displayName ?? user.email}
-          </p>
-        </header>
-        <CommentForm event={event} user={user} />
-        <div style={{ marginTop: "var(--space-5)", textAlign: "center" }}>
-          <Link to="/" className="text-tertiary" style={{ fontSize: 13 }}>
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
+  return <CommentScreen event={event} user={user} />;
 }

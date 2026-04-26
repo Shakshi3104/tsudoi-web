@@ -1,13 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { QRCodeSVG } from "qrcode.react";
 import { signInWithGoogle, signOut, subscribeToAuth } from "../lib/auth";
-import { createEvent, deleteEvent, subscribeToMyEvents, updateEventStatus } from "../lib/events";
+import {
+  createEvent,
+  deleteEvent,
+  subscribeToMyEvents,
+  updateEventStatus,
+} from "../lib/events";
 import type { Event, EventStatus } from "../types/models";
 
-function joinUrl(code: string): string {
-  return `${window.location.origin}/join/${code}`;
-}
+const NEW = "__new__";
+
+const statusName: Record<EventStatus, string> = {
+  draft: "Draft",
+  active: "Live",
+  ended: "Ended",
+};
 
 const nextStatus: Record<EventStatus, EventStatus | null> = {
   draft: "active",
@@ -21,161 +30,119 @@ const nextLabel: Record<EventStatus, string> = {
   ended: "",
 };
 
-const statusBadgeClass: Record<EventStatus, string> = {
-  draft: "badge badge--draft",
-  active: "badge badge--active",
-  ended: "badge badge--ended",
-};
+function joinUrl(code: string): string {
+  return `${window.location.origin}/join/${code}`;
+}
 
-function CopyableCode({ value }: { value: string }) {
+function formatDate(ts: { toDate: () => Date } | undefined): string {
+  if (!ts || typeof ts.toDate !== "function") return "—";
+  return ts.toDate().toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function StatusDot({ status }: { status: EventStatus }) {
+  return <span className={`status-dot status-dot--${status}`} aria-hidden />;
+}
+
+function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard API can fail on insecure contexts; silently ignore.
-    }
-  };
-
   return (
     <button
       type="button"
-      onClick={handleCopy}
-      title="Copy code"
-      style={{
-        padding: "2px 6px",
-        font: "inherit",
-        fontFamily: "var(--font-mono)",
-        fontSize: "0.9em",
-        background: copied ? "rgba(52, 199, 89, 0.15)" : "var(--control-bg)",
-        color: copied ? "var(--success)" : "var(--text)",
-        border: "none",
-        borderRadius: "var(--radius-sm)",
-        cursor: "pointer",
-        transition: "background 120ms ease",
+      className="btn"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          /* clipboard unavailable in insecure contexts */
+        }
       }}
     >
-      {copied ? `${value} ✓` : value}
+      {copied ? "Copied" : label}
     </button>
   );
 }
 
-function EventItem({ event }: { event: Event }) {
-  const [showQR, setShowQR] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const next = nextStatus[event.status];
-  const url = joinUrl(event.code);
-
-  const canDelete = event.status === "draft" || event.status === "ended";
-
-  const handleDelete = async () => {
-    const confirmed = window.confirm(
-      `Delete "${event.title}"? This removes all comments and reactions. This cannot be undone.`
-    );
-    if (!confirmed) return;
-    setBusy(true);
-    try {
-      await deleteEvent(event.id);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleReopen = async () => {
-    setBusy(true);
-    try {
-      await updateEventStatus(event.id, "active");
-    } finally {
-      setBusy(false);
-    }
-  };
-
+function Sidebar({
+  events,
+  selectedId,
+  onSelect,
+}: {
+  events: Event[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
   return (
-    <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-      <div className="row-flex">
-        <div className="row__main">
-          <div className="row__title">{event.title}</div>
-          <div className="row__meta" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-            <span className={statusBadgeClass[event.status]}>{event.status}</span>
-            <span>·</span>
-            <span>code</span>
-            <CopyableCode value={event.code} />
-          </div>
-        </div>
-        <div className="row__actions">
-          <button className="btn" onClick={() => setShowQR((v) => !v)} disabled={busy}>
-            {showQR ? "Hide QR" : "Show QR"}
-          </button>
-          {event.status === "ended" && (
-            <button className="btn" onClick={handleReopen} disabled={busy}>
-              Reopen
-            </button>
-          )}
-          {next && (
-            <button
-              className="btn btn--primary"
-              onClick={() => updateEventStatus(event.id, next)}
-              disabled={busy}
+    <aside className="sidebar">
+      <div className="sidebar__label">Events</div>
+      <div className="sidebar__list">
+        {events.length === 0 ? (
+          <div className="sidebar__empty">No events. Press + to add one.</div>
+        ) : (
+          events.map((ev) => (
+            <div
+              key={ev.id}
+              role="button"
+              tabIndex={0}
+              className={`sidebar-item${
+                selectedId === ev.id ? " sidebar-item--selected" : ""
+              }`}
+              onClick={() => onSelect(ev.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(ev.id);
+                }
+              }}
             >
-              {nextLabel[event.status]}
-            </button>
-          )}
-          {canDelete && (
-            <button className="btn btn--danger" onClick={handleDelete} disabled={busy}>
-              Delete
-            </button>
-          )}
-        </div>
+              <StatusDot status={ev.status} />
+              <span className="sidebar-item__title">{ev.title}</span>
+              <span className="sidebar-item__sub">{ev.code}</span>
+            </div>
+          ))
+        )}
       </div>
-      {showQR && (
-        <div
-          style={{
-            marginTop: "var(--space-4)",
-            padding: "var(--space-5)",
-            background: "var(--surface-muted)",
-            borderRadius: "var(--radius-lg)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "var(--space-3)",
-          }}
-        >
-          <div style={{ background: "#ffffff", padding: "var(--space-3)", borderRadius: "var(--radius-md)" }}>
-            <QRCodeSVG value={url} size={200} level="M" />
-          </div>
-          <a href={url} className="row__meta" style={{ wordBreak: "break-all", textAlign: "center" }}>
-            {url}
-          </a>
-        </div>
-      )}
-    </div>
+    </aside>
   );
 }
 
-function EventList({ events }: { events: Event[] }) {
-  if (events.length === 0) {
-    return <p className="text-secondary">No events yet. Create one above.</p>;
-  }
+function EmptyDetail({ hasEvents }: { hasEvents: boolean }) {
   return (
-    <div className="row-list">
-      {events.map((ev) => (
-        <EventItem key={ev.id} event={ev} />
-      ))}
+    <div className="empty-state">
+      <div className="empty-state__title">
+        {hasEvents ? "No event selected" : "No events yet"}
+      </div>
+      <div>
+        {hasEvents
+          ? "Pick an event from the sidebar."
+          : "Press + in the toolbar to create your first event."}
+      </div>
     </div>
   );
 }
 
-function CreateEventForm({ user }: { user: User }) {
+function NewEventForm({
+  user,
+  onCancel,
+  onCreated,
+}: {
+  user: User;
+  onCancel: () => void;
+  onCreated: (id: string) => void;
+}) {
   const [title, setTitle] = useState("");
   const [domains, setDomains] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     setSubmitting(true);
@@ -185,9 +152,8 @@ function CreateEventForm({ user }: { user: User }) {
         .split(",")
         .map((d) => d.trim())
         .filter(Boolean);
-      await createEvent(user, title.trim(), allowedDomains);
-      setTitle("");
-      setDomains("");
+      const id = await createEvent(user, title.trim(), allowedDomains);
+      onCreated(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -196,9 +162,13 @@ function CreateEventForm({ user }: { user: User }) {
   };
 
   return (
-    <div className="card">
-      <form onSubmit={handleSubmit} className="stack">
-        <label className="field">
+    <div className="detail__inner">
+      <div className="detail__head">
+        <h1 className="detail__title">New event</h1>
+        <div className="detail__subtitle">A new draft event with a unique join code.</div>
+      </div>
+      <form onSubmit={submit} className="section" style={{ marginTop: "var(--space-6)" }}>
+        <label className="field" style={{ marginBottom: "var(--space-4)" }}>
           Title
           <input
             className="input"
@@ -207,11 +177,13 @@ function CreateEventForm({ user }: { user: User }) {
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={100}
+            autoFocus
             placeholder="April 2026 all-hands"
           />
         </label>
         <label className="field">
-          Allowed domains <span className="text-tertiary">(comma separated, blank = any)</span>
+          Allowed domains{" "}
+          <span className="text-tertiary">(comma separated, blank = any)</span>
           <input
             className="input"
             type="text"
@@ -220,13 +192,199 @@ function CreateEventForm({ user }: { user: User }) {
             placeholder={import.meta.env.VITE_ALLOWED_DOMAIN || "example.com"}
           />
         </label>
-        <div className="row-flex">
-          <button type="submit" className="btn btn--primary" disabled={submitting || !title.trim()}>
-            {submitting ? "Creating…" : "Create event"}
+        <div className="row-flex" style={{ marginTop: "var(--space-5)" }}>
+          <button type="button" className="btn" onClick={onCancel} disabled={submitting}>
+            Cancel
           </button>
-          {error && <span className="text-danger" style={{ fontSize: 13 }}>{error}</span>}
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={submitting || !title.trim()}
+          >
+            {submitting ? "Creating…" : "Create"}
+          </button>
+          {error && (
+            <span className="text-danger" style={{ fontSize: 13 }}>
+              {error}
+            </span>
+          )}
         </div>
       </form>
+    </div>
+  );
+}
+
+function EventDetail({
+  event,
+  onDeleted,
+}: {
+  event: Event;
+  onDeleted: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const url = joinUrl(event.code);
+  const presentUrl = `${window.location.origin}/present/${event.code}`;
+  const openPresent = () => {
+    window.open(presentUrl, "_blank", "noopener,noreferrer");
+  };
+  const next = nextStatus[event.status];
+  const canDelete = event.status === "draft" || event.status === "ended";
+
+  const advance = async () => {
+    if (!next) return;
+    setBusy(true);
+    try {
+      await updateEventStatus(event.id, next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reopen = async () => {
+    setBusy(true);
+    try {
+      await updateEventStatus(event.id, "active");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    const ok = window.confirm(
+      `Delete "${event.title}"? This removes all comments and reactions. This cannot be undone.`
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteEvent(event.id);
+      onDeleted();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="detail__inner">
+      <div className="detail__head">
+        <h1 className="detail__title">{event.title}</h1>
+        <div className="detail__subtitle">
+          <StatusDot status={event.status} />
+          <span>{statusName[event.status]}</span>
+          <span className="text-tertiary">·</span>
+          <span className="mono">{event.code}</span>
+        </div>
+      </div>
+
+      <div className="detail__actions">
+        {next && (
+          <button className="btn btn--primary" onClick={advance} disabled={busy}>
+            {nextLabel[event.status]}
+          </button>
+        )}
+        {event.status === "ended" && (
+          <button className="btn" onClick={reopen} disabled={busy}>
+            Reopen
+          </button>
+        )}
+        {canDelete && (
+          <button className="btn btn--danger" onClick={remove} disabled={busy}>
+            Delete
+          </button>
+        )}
+      </div>
+
+      <div className="section">
+        <div className="section__label">Join</div>
+        <div className="kv">
+          <div className="kv__key">URL</div>
+          <div className="kv__val">
+            <a className="url-pill" href={url} target="_blank" rel="noreferrer">
+              {url}
+            </a>
+            <CopyButton value={url} label="Copy URL" />
+          </div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Code</div>
+          <div className="kv__val">
+            <span className="mono">{event.code}</span>
+            <CopyButton value={event.code} label="Copy code" />
+          </div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">QR</div>
+          <div className="kv__val">
+            <button
+              type="button"
+              className="qr-frame qr-frame--button"
+              onClick={openPresent}
+              title="Open join screen in new tab (for projecting)"
+              aria-label="Open join screen in new tab"
+            >
+              <QRCodeSVG value={url} size={140} level="M" />
+            </button>
+            <button type="button" className="btn" onClick={openPresent}>
+              Open join screen ↗
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section__label">Settings</div>
+        <div className="kv">
+          <div className="kv__key">Allowed domains</div>
+          <div className="kv__val">
+            {event.settings.allowedDomains.length > 0 ? (
+              event.settings.allowedDomains.map((d) => (
+                <span key={d} className="badge">
+                  {d}
+                </span>
+              ))
+            ) : (
+              <span className="text-tertiary">Any (no restriction)</span>
+            )}
+          </div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Anonymous names</div>
+          <div className="kv__val">
+            {event.settings.allowAnonymousName ? "Allowed" : "Disabled"}
+          </div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Comment speed</div>
+          <div className="kv__val">{event.settings.commentSpeed}</div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Font size</div>
+          <div className="kv__val">{event.settings.fontSize}px</div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Max concurrent</div>
+          <div className="kv__val">{event.settings.maxConcurrent}</div>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section__label">History</div>
+        <div className="kv">
+          <div className="kv__key">Created</div>
+          <div className="kv__val">{formatDate(event.createdAt)}</div>
+        </div>
+        {event.startedAt && (
+          <div className="kv">
+            <div className="kv__key">Started</div>
+            <div className="kv__val">{formatDate(event.startedAt)}</div>
+          </div>
+        )}
+        {event.endedAt && (
+          <div className="kv">
+            <div className="kv__key">Ended</div>
+            <div className="kv__val">{formatDate(event.endedAt)}</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -267,7 +425,11 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
             <button type="submit" className="btn btn--primary btn--large" disabled={!input}>
               Continue
             </button>
-            {error && <p className="text-danger" style={{ fontSize: 13 }}>{error}</p>}
+            {error && (
+              <p className="text-danger" style={{ fontSize: 13 }}>
+                {error}
+              </p>
+            )}
           </div>
         </form>
       </div>
@@ -284,6 +446,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [signInError, setSignInError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -301,9 +464,23 @@ export default function Admin() {
     return subscribeToMyEvents(user.uid, setEvents);
   }, [user]);
 
-  if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  }
+  useEffect(() => {
+    if (selectedId === NEW) return;
+    if (events.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !events.some((ev) => ev.id === selectedId)) {
+      setSelectedId(events[0].id);
+    }
+  }, [events, selectedId]);
+
+  const selected = useMemo(
+    () => events.find((ev) => ev.id === selectedId) ?? null,
+    [events, selectedId]
+  );
+
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
 
   const handleSignIn = async () => {
     setSignInError(null);
@@ -348,27 +525,57 @@ export default function Admin() {
   }
 
   return (
-    <main className="app-shell">
-      <div className="app-container">
-        <header className="row-flex" style={{ marginBottom: "var(--space-5)" }}>
-          <h1>Tsudoi Admin</h1>
-          <div className="spacer" />
-          <div className="row-flex">
-            <span className="text-secondary" style={{ fontSize: 13 }}>
-              {user.displayName ?? user.email}
-            </span>
-            <button className="btn" onClick={() => signOut()}>
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        <h2 className="section-title">Create event</h2>
-        <CreateEventForm user={user} />
-
-        <h2 className="section-title">Your events</h2>
-        <EventList events={events} />
+    <div className="window">
+      <div className="titlebar">
+        <div className="titlebar__group">
+          <button
+            type="button"
+            className="toolbar-btn"
+            onClick={() => setSelectedId(NEW)}
+            title="New event"
+            aria-label="New event"
+            disabled={selectedId === NEW}
+          >
+            +
+          </button>
+        </div>
+        <div className="titlebar__spacer" />
+        <div className="titlebar__group titlebar__group--right">
+          <span className="titlebar__user" title={user.email ?? undefined}>
+            {user.displayName ?? user.email}
+          </span>
+          <button
+            type="button"
+            className="toolbar-btn toolbar-btn--text"
+            onClick={() => signOut()}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
-    </main>
+      <div className="window__body">
+        <Sidebar
+          events={events}
+          selectedId={selectedId === NEW ? null : selectedId}
+          onSelect={setSelectedId}
+        />
+        <main className="detail">
+          {selectedId === NEW && user ? (
+            <NewEventForm
+              user={user}
+              onCancel={() => setSelectedId(events[0]?.id ?? null)}
+              onCreated={(id) => setSelectedId(id)}
+            />
+          ) : selected ? (
+            <EventDetail
+              event={selected}
+              onDeleted={() => setSelectedId(events[0]?.id ?? null)}
+            />
+          ) : (
+            <EmptyDetail hasEvents={events.length > 0} />
+          )}
+        </main>
+      </div>
+    </div>
   );
 }

@@ -225,8 +225,12 @@ function EventDetail({
   const [busy, setBusy] = useState(false);
   const url = joinUrl(event.code);
   const presentUrl = `${window.location.origin}/present/${event.code}`;
+  const leaderboardUrl = `${window.location.origin}/leaderboard/${event.code}`;
   const openPresent = () => {
     window.open(presentUrl, "_blank", "noopener,noreferrer");
+  };
+  const openLeaderboard = () => {
+    window.open(leaderboardUrl, "_blank", "noopener,noreferrer");
   };
   const next = nextStatus[event.status];
   const canDelete = event.status === "draft" || event.status === "ended";
@@ -326,6 +330,14 @@ function EventDetail({
             </button>
             <button type="button" className="btn" onClick={openPresent}>
               Open join screen ↗
+            </button>
+          </div>
+        </div>
+        <div className="kv">
+          <div className="kv__key">Leaderboard</div>
+          <div className="kv__val">
+            <button type="button" className="btn" onClick={openLeaderboard}>
+              Open leaderboard ↗
             </button>
           </div>
         </div>

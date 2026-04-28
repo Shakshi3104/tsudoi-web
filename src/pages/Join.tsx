@@ -25,7 +25,7 @@ interface SentMessage {
 
 function CommentScreen({ event, user }: { event: Event; user: User }) {
   const [text, setText] = useState("");
-  const [color, setColor] = useState(COMMENT_COLORS[1]);
+  const [color, setColor] = useState(COMMENT_COLORS[2]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SentMessage[]>([]);

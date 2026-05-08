@@ -1072,13 +1072,15 @@ label.field {
 
 .leaderboard-page {
   position: relative;
-  min-height: 100svh;
+  height: 100svh;
   width: 100%;
   background:
     radial-gradient(circle at 20% 20%, #6d28d9 0%, transparent 45%),
     radial-gradient(circle at 80% 25%, #db2777 0%, transparent 40%),
     linear-gradient(160deg, #312e81 0%, #1e1b4b 60%, #0f0d34 100%);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   color: #ffffff;
   font-family: var(--font-sans);
 }

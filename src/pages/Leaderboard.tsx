@@ -90,19 +90,34 @@ function formatRank(n: number): string {
 function LeaderboardView({ event }: { event: Event }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [pinned, setPinned] = useState(false);
 
   useEffect(() => subscribeToComments(event.id, setComments), [event.id]);
 
-  // Months that have at least one comment, plus the current month so an
-  // as-yet-empty meeting is still selectable. Newest first.
-  const months = useMemo(() => {
-    const set = new Set<string>([currentMonthKey()]);
+  // Months that actually have comments, newest first.
+  const dataMonths = useMemo(() => {
+    const set = new Set<string>();
     for (const c of comments) {
       const k = monthKeyOf(c);
       if (k) set.add(k);
     }
     return [...set].sort().reverse();
   }, [comments]);
+
+  // Selectable months: every month with comments, plus the current month so an
+  // as-yet-empty meeting is still selectable. Newest first.
+  const months = useMemo(() => {
+    const set = new Set<string>([currentMonthKey(), ...dataMonths]);
+    return [...set].sort().reverse();
+  }, [dataMonths]);
+
+  // Default to the most recent month that has comments, so opening the page
+  // lands on real data instead of an empty current month. Stop once the user
+  // has manually picked a month.
+  useEffect(() => {
+    if (pinned) return;
+    if (dataMonths.length > 0) setSelectedMonth(dataMonths[0]);
+  }, [dataMonths, pinned]);
 
   const monthComments = useMemo(
     () => comments.filter((c) => monthKeyOf(c) === selectedMonth),
@@ -121,7 +136,10 @@ function LeaderboardView({ event }: { event: Event }) {
           <select
             className="leaderboard-month__select"
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onChange={(e) => {
+              setPinned(true);
+              setSelectedMonth(e.target.value);
+            }}
             aria-label="Month"
           >
             {months.map((m) => (

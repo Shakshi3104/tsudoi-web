@@ -13,6 +13,25 @@ interface RankedUser {
   count: number;
 }
 
+function monthKeyOf(c: Comment): string | null {
+  const d = c.createdAt?.toDate?.();
+  if (!d) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+  });
+}
+
 function initials(name: string): string {
   const source = name.trim();
   if (!source) return "?";
@@ -70,17 +89,48 @@ function formatRank(n: number): string {
 
 function LeaderboardView({ event }: { event: Event }) {
   const [comments, setComments] = useState<Comment[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
 
   useEffect(() => subscribeToComments(event.id, setComments), [event.id]);
 
-  const ranked = useMemo(() => rank(comments), [comments]);
-  const totalComments = comments.length;
+  // Months that have at least one comment, plus the current month so an
+  // as-yet-empty meeting is still selectable. Newest first.
+  const months = useMemo(() => {
+    const set = new Set<string>([currentMonthKey()]);
+    for (const c of comments) {
+      const k = monthKeyOf(c);
+      if (k) set.add(k);
+    }
+    return [...set].sort().reverse();
+  }, [comments]);
+
+  const monthComments = useMemo(
+    () => comments.filter((c) => monthKeyOf(c) === selectedMonth),
+    [comments, selectedMonth]
+  );
+
+  const ranked = useMemo(() => rank(monthComments), [monthComments]);
+  const totalComments = monthComments.length;
   const totalParticipants = ranked.length;
 
   return (
     <div className="leaderboard-page__inner">
       <header className="leaderboard-page__header">
         <div className="leaderboard-page__title">{event.title}</div>
+        <div className="leaderboard-month">
+          <select
+            className="leaderboard-month__select"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            aria-label="Month"
+          >
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {monthLabel(m)}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="leaderboard-page__stats">
           <div className="leaderboard-stat">
             <div className="leaderboard-stat__value">

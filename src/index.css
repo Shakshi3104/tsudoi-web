@@ -825,6 +825,39 @@ label.field {
   line-height: 1.2;
 }
 
+.detail__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.detail__title-row .btn {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.detail__head:hover .detail__title-row .btn,
+.detail__title-row .btn:focus-visible {
+  opacity: 1;
+}
+
+.detail__title-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.detail__title-input {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  min-width: 260px;
+  flex: 1 1 260px;
+  max-width: 480px;
+}
+
 .detail__subtitle {
   font-size: 13px;
   color: var(--text-secondary);

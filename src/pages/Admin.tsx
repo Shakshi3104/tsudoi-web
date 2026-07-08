@@ -8,6 +8,7 @@ import {
   deleteEvent,
   subscribeToMyEvents,
   updateEventStatus,
+  updateEventTitle,
 } from "../lib/events";
 import type { Event, EventStatus } from "../types/models";
 
@@ -223,6 +224,9 @@ function EventDetail({
   onDeleted: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(event.title);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const url = joinUrl(event.code);
   const presentUrl = `${window.location.origin}/present/${event.code}`;
   const leaderboardUrl = `${window.location.origin}/leaderboard/${event.code}`;
@@ -234,6 +238,40 @@ function EventDetail({
   };
   const next = nextStatus[event.status];
   const canDelete = event.status === "draft" || event.status === "ended";
+
+  useEffect(() => {
+    setEditingTitle(false);
+    setTitleDraft(event.title);
+    setTitleError(null);
+  }, [event.id]);
+
+  const saveTitle = async () => {
+    const trimmed = titleDraft.trim();
+    if (!trimmed) {
+      setTitleError("Title can't be empty.");
+      return;
+    }
+    if (trimmed === event.title) {
+      setEditingTitle(false);
+      return;
+    }
+    setBusy(true);
+    setTitleError(null);
+    try {
+      await updateEventTitle(event.id, trimmed);
+      setEditingTitle(false);
+    } catch (e) {
+      setTitleError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelTitle = () => {
+    setTitleDraft(event.title);
+    setTitleError(null);
+    setEditingTitle(false);
+  };
 
   const advance = async () => {
     if (!next) return;
@@ -271,7 +309,59 @@ function EventDetail({
   return (
     <div className="detail__inner">
       <div className="detail__head">
-        <h1 className="detail__title">{event.title}</h1>
+        {editingTitle ? (
+          <form
+            className="detail__title-edit"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveTitle();
+            }}
+          >
+            <input
+              className="input detail__title-input"
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") cancelTitle();
+              }}
+              maxLength={100}
+              autoFocus
+              aria-label="Event title"
+            />
+            <button
+              type="submit"
+              className="btn btn--primary"
+              disabled={busy || !titleDraft.trim()}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={cancelTitle}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+            {titleError && (
+              <span className="text-danger" style={{ fontSize: 13 }}>
+                {titleError}
+              </span>
+            )}
+          </form>
+        ) : (
+          <div className="detail__title-row">
+            <h1 className="detail__title">{event.title}</h1>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setEditingTitle(true)}
+            >
+              Rename
+            </button>
+          </div>
+        )}
         <div className="detail__subtitle">
           <StatusDot status={event.status} />
           <span>{statusName[event.status]}</span>

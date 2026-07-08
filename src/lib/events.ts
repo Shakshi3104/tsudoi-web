@@ -87,6 +87,17 @@ export async function updateEventStatus(
   await updateDoc(doc(db, "events", eventId), update);
 }
 
+export async function updateEventTitle(
+  eventId: string,
+  title: string
+): Promise<void> {
+  const trimmed = title.trim();
+  if (trimmed.length < 1 || trimmed.length > 100) {
+    throw new Error("Title must be between 1 and 100 characters.");
+  }
+  await updateDoc(doc(db, "events", eventId), { title: trimmed });
+}
+
 export async function findEventByCode(code: string): Promise<Event | null> {
   const ref = doc(db, "events", code.trim().toUpperCase());
   const snap = await getDoc(ref);

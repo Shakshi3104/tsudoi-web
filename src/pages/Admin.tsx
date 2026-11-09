@@ -6,7 +6,7 @@ import UserMenu from "../components/UserMenu";
 import {
   createEvent,
   deleteEvent,
-  subscribeToMyEvents,
+  subscribeToAdminEvents,
   updateEventStatus,
   updateEventTitle,
 } from "../lib/events";
@@ -561,7 +561,7 @@ export default function Admin() {
       setEvents([]);
       return;
     }
-    return subscribeToMyEvents(user.uid, setEvents);
+    return subscribeToAdminEvents(user, setEvents);
   }, [user]);
 
   useEffect(() => {

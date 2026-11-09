@@ -16,19 +16,41 @@ service cloud.firestore {
         || domainOf(request.auth.token.email) in event.settings.allowedDomains;
     }
 
+    function myDomain() {
+      return domainOf(request.auth.token.email).lower();
+    }
+
+    // Domains whose members co-manage each other's events. Opt-in per
+    // deployment: without config/adminSharing, only the creator manages.
+    function sharedAdminDomains() {
+      let cfg = /databases/$(database)/documents/config/adminSharing;
+      return exists(cfg) ? get(cfg).data.domains : [];
+    }
+
     function isEventOrganizer(event) {
-      return isSignedIn() && request.auth.uid == event.createdBy;
+      return isSignedIn() && (
+        request.auth.uid == event.createdBy
+        || (request.auth.token.email_verified == true
+          && event.ownerDomain == myDomain()
+          && myDomain() in sharedAdminDomains())
+      );
+    }
+
+    match /config/adminSharing {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     match /events/{eventId} {
       allow read: if isSignedIn() && (
         resource == null
         || domainAllowed(resource.data)
-        || request.auth.uid == resource.data.createdBy
+        || isEventOrganizer(resource.data)
       );
 
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.get('ownerDomain', myDomain()) == myDomain()
         && request.resource.data.status == 'draft'
         && request.resource.data.title is string
         && request.resource.data.title.size() >= 1
@@ -38,7 +60,12 @@ service cloud.firestore {
 
       allow update: if isEventOrganizer(resource.data)
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.code == resource.data.code;
+        && request.resource.data.code == resource.data.code
+        && (request.resource.data.get('ownerDomain', null) == resource.data.get('ownerDomain', null)
+          // Backfill for events created before ownerDomain existed.
+          || (resource.data.get('ownerDomain', null) == null
+            && request.auth.uid == resource.data.createdBy
+            && request.resource.data.ownerDomain == myDomain()));
 
       allow delete: if isEventOrganizer(resource.data)
         && resource.data.status in ['draft', 'ended'];
@@ -48,7 +75,8 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/events/$(eventId)).data;
         }
 
-        allow read: if isSignedIn() && domainAllowed(parentEvent());
+        allow read: if isSignedIn()
+          && (domainAllowed(parentEvent()) || isEventOrganizer(parentEvent()));
 
         allow create: if isSignedIn()
           && domainAllowed(parentEvent())
@@ -71,7 +99,8 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/events/$(eventId)).data;
         }
 
-        allow read: if isSignedIn() && domainAllowed(parentEvent());
+        allow read: if isSignedIn()
+          && (domainAllowed(parentEvent()) || isEventOrganizer(parentEvent()));
 
         allow create: if isSignedIn()
           && domainAllowed(parentEvent())

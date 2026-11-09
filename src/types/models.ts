@@ -19,6 +19,7 @@ export interface Event {
   title: string;
   status: EventStatus;
   createdBy: string;
+  ownerDomain?: string;
   createdAt: Timestamp;
   startedAt?: Timestamp;
   endedAt?: Timestamp;

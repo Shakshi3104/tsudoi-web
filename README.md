@@ -64,6 +64,14 @@ full design notes.
    npm run build && firebase deploy --only hosting
    ```
 
+5. **Optional: share event management within a domain**
+
+   By default each organizer sees only the events they created in `/admin`.
+   To let everyone in a Workspace domain see and manage each other's events,
+   create the document `config/adminSharing` in the Firebase console with a
+   `domains` array field, e.g. `["example.com"]`. Members of a listed domain
+   get the same permissions as the creator, including delete.
+
 ## Commands
 
 | Command | Purpose |

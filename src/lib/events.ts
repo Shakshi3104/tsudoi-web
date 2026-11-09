@@ -4,6 +4,7 @@ import {
   serverTimestamp,
   query,
   where,
+  or,
   orderBy,
   onSnapshot,
   doc,
@@ -54,6 +55,7 @@ export async function createEvent(
       title,
       status: "draft",
       createdBy: user.uid,
+      ownerDomain: emailDomain(user),
       createdAt: serverTimestamp(),
       settings: { ...DEFAULT_SETTINGS, allowedDomains },
     });
@@ -62,19 +64,67 @@ export async function createEvent(
   throw new Error("Could not generate a unique event code. Try again.");
 }
 
-export function subscribeToMyEvents(
-  uid: string,
+function emailDomain(user: User): string {
+  return (user.email ?? "").split("@")[1]?.toLowerCase() ?? "";
+}
+
+// Domains whose members co-manage each other's events. Set per deployment in
+// config/adminSharing; absent means each organizer sees only their own events.
+async function getSharedAdminDomains(): Promise<string[]> {
+  const snap = await getDoc(doc(db, "config", "adminSharing"));
+  const domains = snap.exists() ? snap.data().domains : undefined;
+  return Array.isArray(domains) ? domains : [];
+}
+
+// Events created before ownerDomain existed are not visible to co-organizers
+// until their creator stamps it.
+function backfillOwnerDomain(user: User, events: Event[]): void {
+  const domain = emailDomain(user);
+  if (!domain) return;
+  for (const ev of events) {
+    if (ev.createdBy === user.uid && !ev.ownerDomain) {
+      updateDoc(doc(db, "events", ev.id), { ownerDomain: domain }).catch(
+        (e) => console.warn(`Could not set ownerDomain on ${ev.id}`, e)
+      );
+    }
+  }
+}
+
+export function subscribeToAdminEvents(
+  user: User,
   callback: (events: Event[]) => void
 ): () => void {
-  const q = query(
-    collection(db, "events"),
-    where("createdBy", "==", uid),
-    orderBy("createdAt", "desc")
-  );
-  return onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
-    const events = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Event));
-    callback(events);
-  });
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
+
+  const listen = (shared: boolean) => {
+    const domain = emailDomain(user);
+    const owner = where("createdBy", "==", user.uid);
+    const q = shared
+      ? query(
+          collection(db, "events"),
+          or(owner, where("ownerDomain", "==", domain)),
+          orderBy("createdAt", "desc")
+        )
+      : query(collection(db, "events"), owner, orderBy("createdAt", "desc"));
+    unsubscribe = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
+      const events = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Event));
+      backfillOwnerDomain(user, events);
+      callback(events);
+    });
+  };
+
+  getSharedAdminDomains()
+    .then((domains) => domains.includes(emailDomain(user)))
+    .catch(() => false)
+    .then((shared) => {
+      if (!cancelled) listen(shared);
+    });
+
+  return () => {
+    cancelled = true;
+    unsubscribe?.();
+  };
 }
 
 export async function updateEventStatus(

@@ -4,7 +4,7 @@ This document is the **single source of truth** for Tsudoi's Firestore data
 model. The web app (`tsudoi-web`) and the macOS projection app (`tsudoi-macos`)
 both conform to this schema.
 
-**Schema version: 1.0.0**
+**Schema version: 1.1.0**
 
 If you change this schema, bump the version, update `src/types/models.ts`
 in `tsudoi-web`, and open a companion PR in `tsudoi-macos` to keep the Swift
@@ -18,11 +18,13 @@ models in sync.
 events/{eventId}
 ├── comments/{commentId}
 └── reactions/{reactionId}
+config/adminSharing
 ```
 
 - `events` is a top-level collection.
 - `comments` and `reactions` are subcollections under each event.
-- There are no other top-level collections in MVP.
+- `config` holds per-deployment settings. It is read-only to clients and
+  edited from the Firebase console.
 
 ---
 
@@ -36,6 +38,7 @@ One document per live session.
 | `title`      | string     | yes      | Display name of the event. 1–100 chars.                                |
 | `status`     | string     | yes      | One of `draft`, `active`, `ended`.                                     |
 | `createdBy`  | string     | yes      | UID of the organizer who created the event.                            |
+| `ownerDomain`| string     | no       | Lowercased email domain of the creator. Set at creation; immutable. Missing on events created before 1.1.0 until the creator next opens `/admin`. |
 | `createdAt`  | timestamp  | yes      | Server timestamp at creation.                                          |
 | `startedAt`  | timestamp  | no       | Server timestamp when `status` first flipped to `active`.              |
 | `endedAt`    | timestamp  | no       | Server timestamp when `status` flipped to `ended`.                     |
@@ -57,8 +60,9 @@ One document per live session.
 `status` transitions: `draft → active → ended`. Transitions are one-way; no
 reopening an ended event.
 
-Only `createdBy` (or other admins in a future version) can modify the event
-document.
+Only the event's organizers can modify the event document: `createdBy`, plus
+— when admin sharing is enabled — members of the same `ownerDomain`. See
+`config/adminSharing` below.
 
 ### Indexes
 
@@ -130,17 +134,34 @@ Single-field index, automatic.
 
 ---
 
+## `config/adminSharing`
+
+Optional. Enables shared event management within email domains.
+
+| Field     | Type          | Required | Notes                                                      |
+| --------- | ------------- | -------- | ---------------------------------------------------------- |
+| `domains` | array<string> | yes      | Lowercased email domains, e.g. `["example.com"]`.          |
+
+When present, a signed-in user whose verified email domain is listed sees and
+manages every event whose `ownerDomain` matches their domain, with the same
+permissions as the creator. When absent (the default), each organizer sees and
+manages only the events they created.
+
+---
+
 ## Authorization summary
 
 Detailed rules live in `firestore.rules`. At a high level:
 
 - **Read access to `events/{id}`**: any authenticated user whose email domain
   matches `settings.allowedDomains` (or any user if `allowedDomains` is empty).
-- **Write access to `events/{id}`**: only the document's `createdBy`.
+- **Write access to `events/{id}`**: the document's `createdBy`, or a member
+  of its `ownerDomain` when that domain is listed in `config/adminSharing`.
+  Organizers can also read the event regardless of `allowedDomains`.
 - **Create `comments`**: authenticated users meeting the domain check, while
   `status == "active"`. `authorUid` must equal `request.auth.uid`. `text`
   length must be within 1–200 chars.
-- **Update `comments`**: only the event's `createdBy`, and only the `hidden`
+- **Update `comments`**: only the event's organizers, and only the `hidden`
   field.
 - **Delete `comments`**: never (in MVP).
 - **Create `reactions`**: same as comments. Immutable after creation.
